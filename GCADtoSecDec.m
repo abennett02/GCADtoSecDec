@@ -42,7 +42,7 @@ If[(Invs//Length)!=0,GcadPos[[i]]=Complement[GcadPos[[i]],Apply[List,Reduce[Invs
 Trans=GetTrans[GcadPos[[i]], Xlist];
 
 FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, False,"pos"<>ToString[i],FileName, False];
-Print[Fold[ReplaceAll, posTest[[i]],Reverse[Trans]]//Simplify];
+Print[Fold[ReplaceAll, posTest[[i]],Trans]//Simplify];
 ];
 Print["positive integrals written to "<>FileName];
 For[i=1,i<((GcadNeg//Length)+1),i++,
@@ -53,7 +53,7 @@ If[(Invs//Length)!=0,GcadNeg[[i]]=Complement[GcadNeg[[i]],Apply[List,Reduce[Invs
 Trans=GetTrans[GcadNeg[[i]], Xlist];
 
 FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, True,"neg"<>ToString[i],FileName,i==(GcadNeg//Length)];
-Print[Fold[ReplaceAll, negTest[[i]],Reverse[Trans]]//Simplify];
+Print[Fold[ReplaceAll, negTest[[i]],Trans]//Simplify];
 ];
 
 stream = OpenAppend[FileName];
@@ -116,8 +116,8 @@ Continue[]
 ];
 Print["Error: "<>ToString[f]<>" not recognised"]
 ];
-TransList=SortBy[TransList,Length[Variables[#[[2]]]]&];
-TransList
+TransList=SortBy[TransList,Length[Intersection[Variables[#[[2]]],Xlist]]&];
+Reverse[TransList]
 ]
 
 FormatToSecDec::usage="Applies transformations to polynomial, and appends a pySecDec MakePackage() object to file
@@ -135,7 +135,6 @@ FileName: name of output file
 IsEnd: bool, True if object is the last to be written to file"
 
 FormatToSecDec[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, Xlist_List, IsNeg_,CellName_String,FileName_String, IsEnd_]:=Module[{FpolyT,UpolyT, Jac,polyList,stream},
-Trans=Reverse[Trans];
 FpolyT=Fold[ReplaceAll,Fpoly,Trans]//Simplify//Together;
 If[IsNeg,FpolyT=FpolyT*-1];
 UpolyT=Fold[ReplaceAll,Upoly,Trans]//Simplify//Together;
