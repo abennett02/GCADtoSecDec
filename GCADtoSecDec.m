@@ -129,21 +129,34 @@ Upow: power of U polynomial
 TransList: list of transformations
 IsNeg: bool, True for negative cell"
 
-ApplyTrans[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, IsNeg_]:=Module[{FpolyT,UpolyT,Jac,PolyList},
+ApplyTrans[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, IsNeg_]:=Module[{FpolyT,UpolyT,Jac,PolyList, FpolyTN, FpolyTD, UpolyTN, UpolyTD, JacN, JacD, CombinedList, base, powers},
 FpolyT=Fold[ReplaceAll,Fpoly,Trans]//Simplify//Together;
 If[IsNeg,FpolyT=FpolyT*-1];
 UpolyT=Fold[ReplaceAll,Upoly,Trans]//Simplify//Together;
 Jac=Outer[D,Trans[[;;,2]],Trans[[;;,1]]]//Det//Simplify//Together;
 
-(*Could combine terms together first to simplify further*)
-PolyList={(FpolyT//Numerator//Expand)^(-Fpow)//InputForm,
-(FpolyT//Denominator//Expand)^(Fpow)//InputForm,
-(UpolyT//Numerator//Expand)^(Upow)//InputForm,
-(UpolyT//Denominator//Expand)^(-Upow)//InputForm,
-Jac//Numerator//Expand//InputForm,
-(Jac//Denominator//Expand)^-1//InputForm};
-PolyList=Complement[PolyList,{InputForm[1]}];
-PolyList
+FpolyTN=FpolyT//Numerator//FactorList;
+FpolyTN[[;;,2]]=FpolyTN[[;;,2]]*(-Fpow);
+
+FpolyTD=FpolyT//Denominator//FactorList;
+FpolyTD[[;;,2]]=FpolyTD[[;;,2]]*(Fpow);
+
+UpolyTN=UpolyT//Numerator//FactorList;
+UpolyTN[[;;,2]]=UpolyTN[[;;,2]]*(Upow);
+
+UpolyTD=UpolyT//Denominator//FactorList;
+UpolyTD[[;;,2]]=UpolyTD[[;;,2]]*(-Upow);
+
+JacN=Jac//Numerator//FactorList;
+
+JacD=Jac//Denominator//FactorList;
+JacD[[;;,2]]=JacD[[;;,2]]*(-1);
+
+CombinedList=GatherBy[{FpolyTN,FpolyTD,UpolyTN,UpolyTD,JacN,JacD}//Flatten[#,1]&,#[[1]]&];
+base=CombinedList[[;;,1,1]];
+powers=Map[Simplify[Total[#[[;;,2]]]]&,CombinedList];
+PolyList=Table[(base[[i]]^(powers[[i]]))//InputForm,{i,1,Length[CombinedList]}];
+Complement[PolyList,{InputForm[1]}]
 ];
 
 FormatToSecDec::usage="Applies transformations to polynomial, and appends a pySecDec MakePackage() object to file
