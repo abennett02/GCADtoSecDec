@@ -120,6 +120,32 @@ TransList=SortBy[TransList,Length[Intersection[Variables[#[[2]]],Xlist]]&];
 Reverse[TransList]
 ]
 
+ApplyTrans::usage="Applies transformations to polynomial, and returns list
+-------------------
+Fpoly: F polynomial
+Upoly: U polynomial
+Fpow: power of F polynomial
+Upow: power of U polynomial
+TransList: list of transformations
+IsNeg: bool, True for negative cell"
+
+ApplyTrans[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, IsNeg_]:=Module[{FpolyT,UpolyT,Jac,PolyList},
+FpolyT=Fold[ReplaceAll,Fpoly,Trans]//Simplify//Together;
+If[IsNeg,FpolyT=FpolyT*-1];
+UpolyT=Fold[ReplaceAll,Upoly,Trans]//Simplify//Together;
+Jac=Outer[D,Trans[[;;,2]],Trans[[;;,1]]]//Det//Simplify//Together;
+
+(*Could combine terms together first to simplify further*)
+PolyList={(FpolyT//Numerator//Expand)^(-Fpow)//InputForm,
+(FpolyT//Denominator//Expand)^(Fpow)//InputForm,
+(UpolyT//Numerator//Expand)^(Upow)//InputForm,
+(UpolyT//Denominator//Expand)^(-Upow)//InputForm,
+Jac//Numerator//Expand//InputForm,
+(Jac//Denominator//Expand)^-1//InputForm};
+PolyList=Complement[PolyList,{InputForm[1]}];
+PolyList
+];
+
 FormatToSecDec::usage="Applies transformations to polynomial, and appends a pySecDec MakePackage() object to file
 Inputs
 -------------------
@@ -135,19 +161,8 @@ FileName: name of output file
 IsEnd: bool, True if object is the last to be written to file"
 
 FormatToSecDec[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, Xlist_List, IsNeg_,CellName_String,FileName_String, IsEnd_]:=Module[{FpolyT,UpolyT, Jac,polyList,stream},
-FpolyT=Fold[ReplaceAll,Fpoly,Trans]//Simplify//Together;
-If[IsNeg,FpolyT=FpolyT*-1];
-UpolyT=Fold[ReplaceAll,Upoly,Trans]//Simplify//Together;
-Jac=Outer[D,Trans[[;;,2]],Trans[[;;,1]]]//Det//Simplify//Together;
 
-(*Could combine terms together first to simplify further*)
-polyList={(FpolyT//Numerator//Expand)^(-Fpow)//InputForm,
-(FpolyT//Denominator//Expand)^(Fpow)//InputForm,
-(UpolyT//Numerator//Expand)^(Upow)//InputForm,
-(UpolyT//Denominator//Expand)^(-Upow)//InputForm,
-Jac//Numerator//Expand//InputForm,
-(Jac//Denominator//Expand)^-1//InputForm};
-polyList=Complement[polyList,{InputForm[1]}];
+polyList=ApplyTrans[Fpoly, Upoly, Fpow, Upow, Trans, IsNeg];
 
 stream=OpenAppend[FileName];
 
