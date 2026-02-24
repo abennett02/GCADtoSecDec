@@ -133,7 +133,8 @@ ApplyTrans[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, IsNeg_]:=Module[{FpolyT,Upo
 FpolyT=Fold[ReplaceAll,Fpoly,Trans]//Simplify//Together;
 If[IsNeg,FpolyT=FpolyT*-1];
 UpolyT=Fold[ReplaceAll,Upoly,Trans]//Simplify//Together;
-Jac=Outer[D,Trans[[;;,2]],Trans[[;;,1]]]//Det//Simplify//Together;
+Jac=Fold[(#1/.#2)*D[#2[[2]],#2[[1]]]&,1,Trans]//Simplify//Together;
+(*Jac=Outer[D,Trans[[;;,2]],Trans[[;;,1]]]//Det//Simplify//Together;*)
 
 FpolyTN=FpolyT//Numerator//FactorList;
 FpolyTN[[;;,2]]=FpolyTN[[;;,2]]*(-Fpow);
@@ -156,6 +157,7 @@ CombinedList=GatherBy[{FpolyTN,FpolyTD,UpolyTN,UpolyTD,JacN,JacD}//Flatten[#,1]&
 base=CombinedList[[;;,1,1]];
 powers=Map[Simplify[Total[#[[;;,2]]]]&,CombinedList];
 PolyList=Table[(base[[i]]^(powers[[i]]))//InputForm,{i,1,Length[CombinedList]}];
+
 Complement[PolyList,{InputForm[1]}]
 ];
 
