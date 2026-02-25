@@ -129,12 +129,11 @@ Upow: power of U polynomial
 TransList: list of transformations
 IsNeg: bool, True for negative cell"
 
-ApplyTrans[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, IsNeg_]:=Module[{FpolyT,UpolyT,Jac,PolyList, FpolyTN, FpolyTD, UpolyTN, UpolyTD, JacN, JacD, CombinedList, base, powers},
+ApplyTrans[Fpoly_, Upoly_, Fpow_, Upow_, Xlist_List, Trans_List, IsNeg_]:=Module[{FpolyT,UpolyT,Jac, FpolyTN, FpolyTD, UpolyTN, UpolyTD, JacN, JacD, CombinedList,PolyList, Coeff, base, powers},
 FpolyT=Fold[ReplaceAll,Fpoly,Trans]//Simplify//Together;
 If[IsNeg,FpolyT=FpolyT*-1];
 UpolyT=Fold[ReplaceAll,Upoly,Trans]//Simplify//Together;
 Jac=Fold[(#1/.#2)*D[#2[[2]],#2[[1]]]&,1,Trans]//Simplify//Together;
-(*Jac=Outer[D,Trans[[;;,2]],Trans[[;;,1]]]//Det//Simplify//Together;*)
 
 FpolyTN=FpolyT//Numerator//FactorList;
 FpolyTN[[;;,2]]=FpolyTN[[;;,2]]*(-Fpow);
@@ -154,11 +153,19 @@ JacD=Jac//Denominator//FactorList;
 JacD[[;;,2]]=JacD[[;;,2]]*(-1);
 
 CombinedList=GatherBy[{FpolyTN,FpolyTD,UpolyTN,UpolyTD,JacN,JacD}//Flatten[#,1]&,#[[1]]&];
-base=CombinedList[[;;,1,1]];
-powers=Map[Simplify[Total[#[[;;,2]]]]&,CombinedList];
-PolyList=Table[(base[[i]]^(powers[[i]]))//InputForm,{i,1,Length[CombinedList]}];
 
-Complement[PolyList,{InputForm[1]}]
+PolyList=Select[CombinedList,IntersectingQ[Variables[#[[1,1]]],Xlist]&];
+base=PolyList[[;;,1,1]];
+powers=Map[Simplify[Total[#[[;;,2]]]]&,PolyList];
+PolyList=Table[(base[[i]]^(powers[[i]]))//InputForm,{i,1,Length[PolyList]}];
+
+Coeff=Select[CombinedList,!IntersectingQ[Variables[#[[1,1]]],Xlist]&];
+base=Coeff[[;;,1,1]];
+powers=Map[Simplify[Total[#[[;;,2]]]]&,Coeff];
+Coeff=Table[(base[[i]]^(powers[[i]])),{i,1,Length[Coeff]}]//Apply[Times,#]&//InputForm;
+
+PolyList=Complement[PolyList,{InputForm[1]}];
+{PolyList, Coeff}
 ];
 
 FormatToSecDec::usage="Applies transformations to polynomial, and appends a pySecDec MakePackage() object to file
@@ -175,9 +182,9 @@ CellName: name identifier for cell
 FileName: name of output file
 IsEnd: bool, True if object is the last to be written to file"
 
-FormatToSecDec[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, Xlist_List, IsNeg_,CellName_String,FileName_String, IsEnd_]:=Module[{FpolyT,UpolyT, Jac,polyList,stream},
+FormatToSecDec[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, Xlist_List, IsNeg_,CellName_String,FileName_String, IsEnd_]:=Module[{FpolyT,UpolyT, Jac,polyList, coeff, stream},
 
-polyList=ApplyTrans[Fpoly, Upoly, Fpow, Upow, Trans, IsNeg];
+{polyList,coeff}=ApplyTrans[Fpoly, Upoly, Fpow, Upow, Xlist, Trans, IsNeg];
 
 stream=OpenAppend[FileName];
 
@@ -188,8 +195,8 @@ WriteList[Xlist,stream, False];
 WriteString[stream,",\npolynomials_to_decompose="];
 WriteList[polyList,stream,True];
 If[IsNeg, 
-WriteString[stream, ",\nprefactor='gamma("<>ToString[Fpow]<>")*exp(I*Pi*("<>ToString[Fpow]<>"))',\n"],
-WriteString[stream, ",\nprefactor='gamma("<>ToString[Fpow]<>")',\n"]];
+WriteString[stream, ",\nprefactor='gamma("<>ToString[Fpow]<>")*exp(I*Pi*("<>ToString[Fpow]<>"))*"<>ToString[coeff]<>"',\n"],
+WriteString[stream, ",\nprefactor='gamma("<>ToString[Fpow]<>")*"<>ToString[coeff]<>"',\n"]];
 WriteString[stream, "decomposition_method='geometric'\n)"];
 If[!IsEnd, WriteString[stream, ","]];
 WriteString[stream,"\n\n"];
