@@ -41,7 +41,7 @@ If[(Invs//Length)!=0,GcadPos[[i]]=Complement[GcadPos[[i]],Apply[List,Reduce[Invs
 
 Trans=GetTrans[GcadPos[[i]], Xlist];
 
-FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, False,"pos"<>ToString[i],FileName, False];
+FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, False,"pos"<>ToString[i],FileName, False];
 Print[Fold[ReplaceAll, posTest[[i]],Trans]//Simplify];
 ];
 Print["positive integrals written to "<>FileName];
@@ -52,7 +52,7 @@ If[(Invs//Length)!=0,GcadNeg[[i]]=Complement[GcadNeg[[i]],Apply[List,Reduce[Invs
 
 Trans=GetTrans[GcadNeg[[i]], Xlist];
 
-FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, True,"neg"<>ToString[i],FileName,i==(GcadNeg//Length)];
+FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, True,"neg"<>ToString[i],FileName,i==(GcadNeg//Length)];
 Print[Fold[ReplaceAll, negTest[[i]],Trans]//Simplify];
 ];
 
@@ -129,7 +129,7 @@ Upow: power of U polynomial
 TransList: list of transformations
 IsNeg: bool, True for negative cell"
 
-ApplyTrans[Fpoly_, Upoly_, Fpow_, Upow_, Xlist_List, Trans_List, IsNeg_]:=Module[{FpolyT,UpolyT,Jac, FpolyTN, FpolyTD, UpolyTN, UpolyTD, JacN, JacD, CombinedList,PolyList, Coeff, base, powers},
+ApplyTrans[Fpoly_, Upoly_, Fpow_, Upow_, Xlist_List, Invs_List, InvsLim_List, Trans_List, IsNeg_]:=Module[{FpolyT,UpolyT,Jac, FpolyTN, FpolyTD, UpolyTN, UpolyTD, JacN, JacD, CombinedList,PolyList, Coeff, base, powers, point, sign},
 FpolyT=Fold[ReplaceAll,Fpoly,Trans]//Simplify//Together;
 If[IsNeg,FpolyT=FpolyT*-1];
 UpolyT=Fold[ReplaceAll,Upoly,Trans]//Simplify//Together;
@@ -152,17 +152,23 @@ JacN=Jac//Numerator//FactorList;
 JacD=Jac//Denominator//FactorList;
 JacD[[;;,2]]=JacD[[;;,2]]*(-1);
 
+
 CombinedList=GatherBy[{FpolyTN,FpolyTD,UpolyTN,UpolyTD,JacN,JacD}//Flatten[#,1]&,#[[1]]&];
 
 PolyList=Select[CombinedList,IntersectingQ[Variables[#[[1,1]]],Xlist]&];
 base=PolyList[[;;,1,1]];
 powers=Map[Simplify[Total[#[[;;,2]]]]&,PolyList];
-PolyList=Table[(base[[i]]^(powers[[i]]))//InputForm,{i,1,Length[PolyList]}];
+
+point=FindInstance[(Map[(#>0)&,Xlist]/.List->And)&&(InvsLim/.List->And), Join[Invs,Xlist]][[1]];
+sign = Sign[base/.point];
+PolyList=Table[((sign*base)[[i]]^(powers[[i]]))//InputForm,{i,1,Length[base]}];
 
 Coeff=Select[CombinedList,!IntersectingQ[Variables[#[[1,1]]],Xlist]&];
 base=Coeff[[;;,1,1]];
 powers=Map[Simplify[Total[#[[;;,2]]]]&,Coeff];
-Coeff=Table[(base[[i]]^(powers[[i]])),{i,1,Length[Coeff]}]//Apply[Times,#]&//InputForm;
+
+sign = Sign[base/.point];
+Coeff=((Table[((base*sign)[[i]]^(powers[[i]])),{i,1,Length[Coeff]}]//Apply[Times,#]&))//InputForm;
 
 PolyList=Complement[PolyList,{InputForm[1]}];
 {PolyList, Coeff}
@@ -182,9 +188,9 @@ CellName: name identifier for cell
 FileName: name of output file
 IsEnd: bool, True if object is the last to be written to file"
 
-FormatToSecDec[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, Xlist_List, IsNeg_,CellName_String,FileName_String, IsEnd_]:=Module[{FpolyT,UpolyT, Jac,polyList, coeff, stream},
+FormatToSecDec[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, Xlist_List, Invs_List, InvsLim_List, IsNeg_,CellName_String,FileName_String, IsEnd_]:=Module[{FpolyT,UpolyT, Jac,polyList, coeff, stream},
 
-{polyList,coeff}=ApplyTrans[Fpoly, Upoly, Fpow, Upow, Xlist, Trans, IsNeg];
+{polyList,coeff}=ApplyTrans[Fpoly, Upoly, Fpow, Upow, Xlist, Invs, InvsLim, Trans, IsNeg];
 
 stream=OpenAppend[FileName];
 
