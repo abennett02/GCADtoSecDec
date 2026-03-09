@@ -33,6 +33,8 @@ stream=OpenWrite[FileName];
 WriteString[stream, "from pySecDec import MakePackage\n\nintegrals="<>"["];
 Close[stream];
 
+point=FindInstance[InvsLim/.List->And, Invs][[1]];
+
 (*Remove original constraints from output. note: xi>0 and 0<xi are checked seperately, and invariants are reduced and expanded to hopefully match the output of GCAD.*)
 For[i=1,i<((GcadPos//Length)+1),i++,
 Print["-------------------"];
@@ -42,7 +44,7 @@ If[(Invs//Length)!=0,GcadPos[[i]]=Complement[GcadPos[[i]],Apply[List,Reduce[Invs
 Trans=GetTrans[GcadPos[[i]], Xlist];
 
 FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, False,"pos"<>ToString[i],FileName, False];
-Print[Fold[ReplaceAll, posTest[[i]],Trans]//Simplify];
+Print[Fold[ReplaceAll, posTest[[i]],Trans]/.point//Simplify];
 ];
 Print["positive integrals written to "<>FileName];
 For[i=1,i<((GcadNeg//Length)+1),i++,
@@ -53,7 +55,7 @@ If[(Invs//Length)!=0,GcadNeg[[i]]=Complement[GcadNeg[[i]],Apply[List,Reduce[Invs
 Trans=GetTrans[GcadNeg[[i]], Xlist];
 
 FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, True,"neg"<>ToString[i],FileName,i==(GcadNeg//Length)];
-Print[Fold[ReplaceAll, negTest[[i]],Trans]//Simplify];
+Print[Fold[ReplaceAll, negTest[[i]],Trans]/.point//Simplify];
 ];
 
 stream = OpenAppend[FileName];
@@ -73,9 +75,8 @@ Returns
 -------------------
 list of transformations"
 
-GetTrans[Cell_,Xlist_List]:=Module[{TransList,f,i},
+GetTrans[Cell_,Xlist_List]:=Module[{TransList,f,i,xj},
 TransList={};
-(*Bug: transformations must be ordered in ascending order of complexity e.g. x1 -> f(no x1), x2 ->f(no x1,x2), (then applied in reverse to functions). Mostly, GCAD output is in correct order, but sometimes isn't - add in sorting of transformations.*)
 For[i=1,i<((Cell//Length)+1),i++,
 f=Cell[[i]];
 (*xi>...*)
@@ -85,7 +86,6 @@ Continue[]
 ];
 (*xi<...*)
 If[Head[f]==Less&&ContainsAny[{f[[1]]},Xlist]&&Length[f]==2,
-If[f[[1]]===Xlist[[1]],xj=Xlist[[2]],xj=Xlist[[1]]];
 TransList=Append[TransList,f[[1]]->f[[1]]/(f[[1]]+xj)f[[2]]];
 Continue[]
 ];
@@ -96,20 +96,19 @@ Continue[]
 ];
 (*...>xi*)
 If[Head[f]==Greater&&ContainsAny[{f[[2]]},Xlist]&&Length[f]==2,
-If[f[[2]]===Xlist[[1]],xj=Xlist[[2]],xj=Xlist[[1]]];
 TransList=Append[TransList,f[[2]]->f[[2]]/(f[[2]]+xj)f[[1]]];
 Continue[]
 ];
 (*...<xi<...*)
+(*note: doesn't work*)
 If[Head[f]==Inequality&&f[[2]]==Less&&ContainsAny[{f[[3]]},Xlist],
-If[f[[3]]===Xlist[[1]],xj=Xlist[[2]],xj=Xlist[[1]]];
 TransList=Append[TransList,f[[3]]->f[[3]]+f[[1]]];
 TransList=Append[TransList,f[[3]]->f[[3]]/(f[[3]]+xj)f[[5]]];
 Continue[]
 ];
 (*...>xi>...*)
+(*note: doesn't work*)
 If[Head[f]==Inequality&&f[[2]]==Greater&&ContainsAny[{f[[3]]},Xlist],
-If[f[[3]]===Xlist[[1]],xj=Xlist[[2]],xj=Xlist[[1]]];
 TransList=Append[TransList,f[[3]]->f[[3]]/(f[[3]]+xj)f[[1]]];
 TransList=Append[TransList,f[[3]]->f[[3]]+f[[5]]];
 Continue[]
@@ -117,6 +116,9 @@ Continue[]
 Print["Error: "<>ToString[f]<>" not recognised"]
 ];
 TransList=SortBy[TransList,Length[Intersection[Variables[#[[2]]],Xlist]]&];
+For[i=1,i<((TransList//Length)+1),i++,
+If[TransList[[i,1]]===Xlist[[1]], TransList[[i]]=(TransList[[i]])/.{xj->Xlist[[2]]}, TransList[[i]]=(TransList[[i]])/.{xj->Xlist[[1]]}]];
+
 Reverse[TransList]
 ]
 
@@ -190,6 +192,7 @@ IsEnd: bool, True if object is the last to be written to file"
 
 FormatToSecDec[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, Xlist_List, Invs_List, InvsLim_List, IsNeg_,CellName_String,FileName_String, IsEnd_]:=Module[{FpolyT,UpolyT, Jac,polyList, coeff, stream},
 
+Print[Trans];
 {polyList,coeff}=ApplyTrans[Fpoly, Upoly, Fpow, Upow, Xlist, Invs, InvsLim, Trans, IsNeg];
 
 stream=OpenAppend[FileName];
@@ -201,8 +204,8 @@ WriteList[Xlist,stream, False];
 WriteString[stream,",\npolynomials_to_decompose="];
 WriteList[polyList,stream,True];
 If[IsNeg, 
-WriteString[stream, ",\nprefactor='gamma("<>ToString[Fpow]<>")*exp(I*Pi*("<>ToString[Fpow]<>"))*"<>ToString[coeff]<>"',\n"],
-WriteString[stream, ",\nprefactor='gamma("<>ToString[Fpow]<>")*"<>ToString[coeff]<>"',\n"]];
+WriteString[stream, ",\nprefactor='gamma("<>ToString[Fpow//InputForm]<>")*exp(I*Pi*("<>ToString[Fpow//InputForm]<>"))*"<>ToString[coeff]<>"',\n"],
+WriteString[stream, ",\nprefactor='gamma("<>ToString[Fpow//InputForm]<>")*"<>ToString[coeff]<>"',\n"]];
 WriteString[stream, "decomposition_method='geometric'\n)"];
 If[!IsEnd, WriteString[stream, ","]];
 WriteString[stream,"\n\n"];
