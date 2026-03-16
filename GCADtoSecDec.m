@@ -100,17 +100,17 @@ TransList=Append[TransList,f[[2]]->f[[2]]/(f[[2]]+xj)f[[1]]];
 Continue[]
 ];
 (*...<xi<...*)
-(*note: doesn't work*)
+(*f1<f3<f5*)
+(*note: breaks if LogicalExpand splits into two inequalities xi>...&&xi<...*)
 If[Head[f]==Inequality&&f[[2]]==Less&&ContainsAny[{f[[3]]},Xlist],
-TransList=Append[TransList,f[[3]]->f[[3]]+f[[1]]];
-TransList=Append[TransList,f[[3]]->f[[3]]/(f[[3]]+xj)f[[5]]];
+TransList=Append[TransList,f[[3]]->(f[[1]]xj+f[[5]]f[[3]])/(f[[3]]+xj)];
 Continue[]
 ];
 (*...>xi>...*)
-(*note: doesn't work*)
+(*f5<f3<f1*)
+(*note: breaks if LogicalExpand splits into two inequalities xi>...&&xi<...*)
 If[Head[f]==Inequality&&f[[2]]==Greater&&ContainsAny[{f[[3]]},Xlist],
-TransList=Append[TransList,f[[3]]->f[[3]]/(f[[3]]+xj)f[[1]]];
-TransList=Append[TransList,f[[3]]->f[[3]]+f[[5]]];
+TransList=Append[TransList,f[[3]]->(f[[5]]xj+f[[1]]f[[3]])/(f[[3]]+xj)];
 Continue[]
 ];
 Print["Error: "<>ToString[f]<>" not recognised"]
