@@ -76,7 +76,6 @@ Returns
 list of transformations"
 
 GetTrans[Cell_,Xlist_List]:=Module[{TransList,f,i,xj,TransVar,count,pos,a,b},
-Print[Cell];
 TransList={};
 TransVar={};
 
@@ -87,9 +86,7 @@ For[i=1,i<((Cell//Length)+1),i++,
 			TransVar=Append[TransVar,f[[2]]]],
 		TransVar=Append[TransVar,f[[3]]]]
 	];
-Print[TransVar];
 count=Counts[TransVar];
-Print[count];
 	
 For[i=1,i<=(Xlist//Length),i++,
 	pos=Position[TransVar,Xlist[[i]]];
@@ -220,7 +217,6 @@ IsEnd: bool, True if object is the last to be written to file"
 
 FormatToSecDec[Fpoly_, Upoly_, Fpow_, Upow_, Trans_List, Xlist_List, Invs_List, InvsLim_List, IsNeg_,CellName_String,FileName_String, IsEnd_]:=Module[{FpolyT,UpolyT, Jac,polyList, coeff, stream},
 
-Print[Trans];
 {polyList,coeff}=ApplyTrans[Fpoly, Upoly, Fpow, Upow, Xlist, Invs, InvsLim, Trans, IsNeg];
 
 stream=OpenAppend[FileName];
