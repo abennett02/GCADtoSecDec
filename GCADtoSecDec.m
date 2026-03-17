@@ -75,52 +75,80 @@ Returns
 -------------------
 list of transformations"
 
-GetTrans[Cell_,Xlist_List]:=Module[{TransList,f,i,xj},
+GetTrans[Cell_,Xlist_List]:=Module[{TransList,f,i,xj,TransVar,count,pos,a,b},
+Print[Cell];
 TransList={};
+TransVar={};
+
 For[i=1,i<((Cell//Length)+1),i++,
-f=Cell[[i]];
-(*xi>...*)
-If[Head[f]==Greater&&ContainsAny[{f[[1]]},Xlist]&&Length[f]==2,
-TransList=Append[TransList,f[[1]]->f[[1]]+f[[2]]];
-Continue[]
-];
-(*xi<...*)
-If[Head[f]==Less&&ContainsAny[{f[[1]]},Xlist]&&Length[f]==2,
-TransList=Append[TransList,f[[1]]->f[[1]]/(f[[1]]+xj)f[[2]]];
-Continue[]
-];
-(*...<xi*)
-If[Head[f]==Less&&ContainsAny[{f[[2]]},Xlist]&&Length[f]==2,
-TransList=Append[TransList,f[[2]]->f[[2]]+f[[1]]];
-Continue[]
-];
-(*...>xi*)
-If[Head[f]==Greater&&ContainsAny[{f[[2]]},Xlist]&&Length[f]==2,
-TransList=Append[TransList,f[[2]]->f[[2]]/(f[[2]]+xj)f[[1]]];
-Continue[]
-];
-(*...<xi<...*)
-(*f1<f3<f5*)
-(*note: breaks if LogicalExpand splits into two inequalities xi>...&&xi<...*)
-If[Head[f]==Inequality&&f[[2]]==Less&&ContainsAny[{f[[3]]},Xlist],
-TransList=Append[TransList,f[[3]]->(f[[1]]xj+f[[5]]f[[3]])/(f[[3]]+xj)];
-Continue[]
-];
-(*...>xi>...*)
-(*f5<f3<f1*)
-(*note: breaks if LogicalExpand splits into two inequalities xi>...&&xi<...*)
-If[Head[f]==Inequality&&f[[2]]==Greater&&ContainsAny[{f[[3]]},Xlist],
-TransList=Append[TransList,f[[3]]->(f[[5]]xj+f[[1]]f[[3]])/(f[[3]]+xj)];
-Continue[]
-];
-Print["Error: "<>ToString[f]<>" not recognised"]
+	f=Cell[[i]];
+	If[(Head[f]==Greater||Head[f]==Less)&&Length[f]==2,
+		If[ContainsAny[{f[[1]]},Xlist],TransVar=Append[TransVar,f[[1]]],
+			TransVar=Append[TransVar,f[[2]]]],
+		TransVar=Append[TransVar,f[[3]]]]
+	];
+Print[TransVar];
+count=Counts[TransVar];
+Print[count];
+	
+For[i=1,i<=(Xlist//Length),i++,
+	pos=Position[TransVar,Xlist[[i]]];
+	f=Cell[[Flatten[pos]]];
+	If[Head[count[Xlist[[i]]]==Missing], Continue[]];
+	If[count[Xlist[[i]]]==1,
+			(*xi>...*)
+		If[Head[f[[1]]]==Greater&&f[[1,1]]===Xlist[[i]]&&Length[f[[1]]]==2,
+			TransList=Append[TransList,Xlist[[i]]->Xlist[[i]]+f[[1,2]]];
+			Continue[]
+		];
+		(*xi<...*)
+		If[Head[f[[1]]]==Less&&f[[1,1]]===Xlist[[i]]&&Length[f[[1]]]==2,
+			TransList=Append[TransList,Xlist[[i]]->Xlist[[i]]/(Xlist[[i]]+xj)f[[1,2]]];
+			Continue[]
+		];
+		(*...<xi*)
+			If[Head[f[[1]]]==Less&&f[[1,2]]===Xlist[[i]]&&Length[f[[1]]]==2,
+			TransList=Append[TransList,Xlist[[i]]->Xlist[[i]]+f[[1,1]]];
+			Continue[]
+		];
+		(*...>xi*)
+			If[Head[f[[1]]]==Greater&&f[[1,2]]===Xlist[[i]]&&Length[f[[1]]]==2,
+			TransList=Append[TransList,Xlist[[i]]->Xlist[[i]]/(Xlist[[i]]+xj)f[[1,1]]];
+			Continue[]
+		];
+		(*...<xi<...*)
+		(*f1<f3<f5*)
+			If[Head[f[[1]]]==Inequality&&f[[1,2]]==Less&&f[[1,3]]===Xlist[[i]],
+			TransList=Append[TransList,Xlist[[i]]->(f[[1,1]]xj+f[[1,5]]Xlist[[i]])/(Xlist[[i]]+xj)];
+			Continue[]
+		];
+		(*...>xi>...*)
+		(*f5<f3<f1*)
+			If[Head[f[[1]]]==Inequality&&f[[1,2]]==Greater&&f[[1,3]]===Xlist[[i]],
+			TransList=Append[TransList,Xlist[[i]]->(f[[1,5]]xj+f[[1,1]]Xlist[[i]])/(Xlist[[i]]+xj)];
+			Continue[]
+		];
+		Print["Error: "<>ToString[f]<>" not recognised"]
+	,
+	If[f[[1,1]]===Xlist[[i]], (*xi variable first*)
+		If[Head[f[[1]]]===Greater,a=f[[1,2]],b=f[[1,2]]],
+	(*xi variable second*)
+		If[Head[f[[1]]]===Less,a=f[[1,1]],b=f[[1,1]]]
+	];
+	If[f[[2,1]]===Xlist[[i]], (*xi variable first*)
+		If[Head[f[[2]]]===Greater, a=f[[2,2]], b=f[[2,2]]],
+	(*xi variable second*)
+		If[Head[f[[2]]]===Less, a=f[[2,1]], b=f[[2,1]]]
+	];
+	TransList=Append[TransList,Xlist[[i]]->(a xj + b Xlist[[i]])/(Xlist[[i]]+xj)]
+	];
 ];
 TransList=SortBy[TransList,Length[Intersection[Variables[#[[2]]],Xlist]]&];
 For[i=1,i<((TransList//Length)+1),i++,
 If[TransList[[i,1]]===Xlist[[1]], TransList[[i]]=(TransList[[i]])/.{xj->Xlist[[2]]}, TransList[[i]]=(TransList[[i]])/.{xj->Xlist[[1]]}]];
 
 Reverse[TransList]
-]
+];
 
 ApplyTrans::usage="Applies transformations to polynomial, and returns list
 -------------------
