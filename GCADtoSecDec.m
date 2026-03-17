@@ -37,25 +37,25 @@ point=FindInstance[InvsLim/.List->And, Invs][[1]];
 
 (*Remove original constraints from output. note: xi>0 and 0<xi are checked seperately, and invariants are reduced and expanded to hopefully match the output of GCAD.*)
 For[i=1,i<((GcadPos//Length)+1),i++,
-Print["-------------------"];
-GcadPos[[i]]=Complement[Apply[List,GcadPos[[i]]],Map[(#>0)&,Xlist],Map[(0<#)&,Xlist]];
-If[(Invs//Length)!=0,GcadPos[[i]]=Complement[GcadPos[[i]],Apply[List,Reduce[InvsLim,Invs]//LogicalExpand]]];
-
-Trans=GetTrans[GcadPos[[i]], Xlist];
-
-FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, False,"pos"<>ToString[i],FileName, False];
-Print[Fold[ReplaceAll, posTest[[i]],Trans]/.point//Simplify];
+	Print["-------------------"];
+	GcadPos[[i]]=Complement[Apply[List,GcadPos[[i]]],Map[(#>0)&,Xlist],Map[(0<#)&,Xlist]];
+	If[(Invs//Length)!=0,GcadPos[[i]]=Complement[GcadPos[[i]],Apply[List,Reduce[InvsLim,Invs]//LogicalExpand]]];
+	
+	Trans=GetTrans[GcadPos[[i]], Xlist];
+	
+	FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, False,"pos"<>ToString[i],FileName, False];
+	Print[Fold[ReplaceAll, posTest[[i]],Trans]/.point//Simplify];
 ];
 Print["positive integrals written to "<>FileName];
 For[i=1,i<((GcadNeg//Length)+1),i++,
-Print["-------------------"];
-GcadNeg[[i]]=Complement[Apply[List,GcadNeg[[i]]],Map[(#>0)&,Xlist],Map[(0<#)&,Xlist]];
-If[(Invs//Length)!=0,GcadNeg[[i]]=Complement[GcadNeg[[i]],Apply[List,Reduce[InvsLim,Invs]//LogicalExpand]]];
-
-Trans=GetTrans[GcadNeg[[i]], Xlist];
-
-FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, True,"neg"<>ToString[i],FileName,i==(GcadNeg//Length)];
-Print[Fold[ReplaceAll, negTest[[i]],Trans]/.point//Simplify];
+	Print["-------------------"];
+	GcadNeg[[i]]=Complement[Apply[List,GcadNeg[[i]]],Map[(#>0)&,Xlist],Map[(0<#)&,Xlist]];
+	If[(Invs//Length)!=0,GcadNeg[[i]]=Complement[GcadNeg[[i]],Apply[List,Reduce[InvsLim,Invs]//LogicalExpand]]];
+	
+	Trans=GetTrans[GcadNeg[[i]], Xlist];
+	
+	FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, True,"neg"<>ToString[i],FileName,i==(GcadNeg//Length)];
+	Print[Fold[ReplaceAll, negTest[[i]],Trans]/.point//Simplify];
 ];
 
 stream = OpenAppend[FileName];
@@ -246,8 +246,8 @@ IsMline: bool,
 WriteList[list_List,stream_OutputStream,IsMLine_]:=Module[{i},
 WriteString[stream,"["];
 For[i=1, i<Length[list],i++,
-WriteString[stream,"'"<> ToString[list[[i]]]<>"'"<> "," ];
-If[IsMLine, WriteString[stream,"\n"]]
+	WriteString[stream,"'"<> ToString[list[[i]]]<>"'"<> "," ];
+	If[IsMLine, WriteString[stream,"\n"]]
 ];
 WriteString[stream,"'"<> ToString[list[[i]]]<>"'"<> "]"];
 ]
