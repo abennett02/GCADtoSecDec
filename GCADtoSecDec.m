@@ -10,7 +10,11 @@ Upow: power of U polynomial
 Xlist: list of Feynman parameters
 Invs: list of invariants (kinematics and masses)
 InvsLim: list of limits on invariants
-FileName: name of output file"
+FileName: name of output file
+
+Optional - for pre run GCAD
+GcadPos: Output of positive GCAD
+GcadNeg: Output of negative GCAD"
 
 RunGCADtoSecDec[Fpoly_, Upoly_, Fpow_, Upow_, Xlist_List, Invs_List, InvsLim_List, FileName_String]:=Module[{GcadArg,GcadPos,GcadNeg, stream, Trans,i},
 GcadArg=(Map[(#>0)&,Xlist]/.List->And)&&(InvsLim/.List->And);
@@ -26,44 +30,77 @@ GcadPos=ReplaceAll[GcadPos,Or->List]//List//Flatten;
 GcadNeg=ReplaceAll[GcadNeg,Or->List]//List//Flatten;
 Print[ToString[GcadPos//Length]<>" positive cells"];
 Print[ToString[GcadNeg//Length]<>" negative cells"];
-posTest=GcadPos;
-negTest=GcadNeg;
 
 stream=OpenWrite[FileName];
 WriteString[stream, "from pySecDec import MakePackage\n\nintegrals="<>"["];
 Close[stream];
 
-point=FindInstance[InvsLim/.List->And, Invs][[1]];
-
-(*Remove original constraints from output. note: xi>0 and 0<xi are checked seperately, and invariants are reduced and expanded to hopefully match the output of GCAD.*)
-For[i=1,i<((GcadPos//Length)+1),i++,
-	Print["-------------------"];
-	GcadPos[[i]]=Complement[Apply[List,GcadPos[[i]]],Map[(#>0)&,Xlist],Map[(0<#)&,Xlist]];
-	If[(Invs//Length)!=0,GcadPos[[i]]=Complement[GcadPos[[i]],Apply[List,Reduce[InvsLim,Invs]//LogicalExpand]]];
-	
-	Trans=GetTrans[GcadPos[[i]], Xlist];
-	
-	FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, False,"pos"<>ToString[i],FileName, False];
-	Print[Fold[ReplaceAll, posTest[[i]],Trans]/.point//Simplify];
-];
+CellLoop[GcadPos, Fpoly, Upoly, Fpow, Upow, Xlist, Invs, InvsLim, FileName, False];
 Print["positive integrals written to "<>FileName];
-For[i=1,i<((GcadNeg//Length)+1),i++,
-	Print["-------------------"];
-	GcadNeg[[i]]=Complement[Apply[List,GcadNeg[[i]]],Map[(#>0)&,Xlist],Map[(0<#)&,Xlist]];
-	If[(Invs//Length)!=0,GcadNeg[[i]]=Complement[GcadNeg[[i]],Apply[List,Reduce[InvsLim,Invs]//LogicalExpand]]];
-	
-	Trans=GetTrans[GcadNeg[[i]], Xlist];
-	
-	FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, True,"neg"<>ToString[i],FileName,i==(GcadNeg//Length)];
-	Print[Fold[ReplaceAll, negTest[[i]],Trans]/.point//Simplify];
-];
 
+CellLoop[GcadNeg, Fpoly, Upoly, Fpow, Upow, Xlist, Invs, InvsLim,  FileName, True];
+
+Print["negative integrals written to "<>FileName];
 stream = OpenAppend[FileName];
 WriteString[stream,"]"];
 Close[stream];
+]
+
+RunGCADtoSecDec[Fpoly_, Upoly_, Fpow_, Upow_, Xlist_List, Invs_List, InvsLim_List, FileName_String, GcadPos_ ,GcadNeg_]:=Module[{stream, Trans, i},
+
+Print[ToString[GcadPos//Length]<>" positive cells"];
+Print[ToString[GcadNeg//Length]<>" negative cells"];
+
+stream=OpenWrite[FileName];
+WriteString[stream, "from pySecDec import MakePackage\n\nintegrals="<>"["];
+Close[stream];
+
+CellLoop[GcadPos, Fpoly, Upoly, Fpow, Upow, Xlist, Invs, InvsLim, FileName, False];
+Print["positive integrals written to "<>FileName];
+
+CellLoop[GcadNeg, Fpoly, Upoly, Fpow, Upow, Xlist, Invs, InvsLim,  FileName, True];
 
 Print["negative integrals written to "<>FileName];
+stream = OpenAppend[FileName];
+WriteString[stream,"]"];
+Close[stream];
 ]
+
+CellLoop::usage = "Loops over each cell in a GCAD output, gets transformations, then writes to file
+Inputs
+-------------------
+GCADoutput: Output of GCAD, split into a list for each cell
+Fpoly: F polynomial
+Upoly: U polynomial
+Fpow: power of F polynomial
+Upow: power of U polynomial
+Xlist: list of Feynman parameters
+Invs: list of invariants (kinematics and masses)
+InvsLim: list of limits on invariants
+FileName: name of output file
+IsNeg: bool, True for negative cell"
+
+CellLoop[GCADoutput_, Fpoly_, Upoly_, Fpow_, Upow_, Xlist_List, Invs_List, InvsLim_List, FileName_, IsNeg_]:=Module[{i,Cell, Trans, test, point},
+For[i=1,i<((GCADoutput//Length)+1),i++,
+	Print["-------------------"];
+	Cell = GCADoutput[[i]];
+	test = GCADoutput[[i]];
+	
+	Cell=Complement[Apply[List,Cell],Map[(#>0)&,Xlist],Map[(0<#)&,Xlist]];
+	If[(Invs//Length)!=0,Cell=Complement[Cell,Apply[List,Reduce[InvsLim,Invs]//LogicalExpand]]];
+	
+	Trans=GetTrans[Cell, Xlist];
+	Print[Trans];
+	
+	If[IsNeg,
+		FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, False,"neg"<>ToString[i],FileName, IsNeg],
+		FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, False,"pos"<>ToString[i],FileName, IsNeg]
+	];
+	
+	point=FindInstance[InvsLim/.List->And, Invs][[1]];
+	Print[Fold[ReplaceAll, test,Trans]/.point//Simplify];
+];
+];
 
 GetTrans::usage="returns list of transformations from cell input
 Inputs
