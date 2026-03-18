@@ -93,12 +93,16 @@ For[i=1,i<((GCADoutput//Length)+1),i++,
 	Print[Trans];
 	
 	If[IsNeg,
-		FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, False,"neg"<>ToString[i],FileName, IsNeg],
-		FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, False,"pos"<>ToString[i],FileName, IsNeg]
+		FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, IsNeg,"neg"<>ToString[i],FileName, i==(GCADoutput//Length)],
+		FormatToSecDec[Fpoly, Upoly, Fpow, Upow, Trans, Xlist, Invs, InvsLim, IsNeg,"pos"<>ToString[i],FileName, False]
 	];
 	
-	point=FindInstance[InvsLim/.List->And, Invs][[1]];
-	Print[Fold[ReplaceAll, test,Trans]/.point//Simplify];
+	If[Length[Invs]!=0,
+		point=FindInstance[InvsLim/.List->And, Invs][[1]];
+		Print[Fold[ReplaceAll, test, Trans]/.point//Simplify];
+	,
+		Print[Fold[ReplaceAll, test, Trans]//Simplify]
+	];
 ];
 ];
 
@@ -220,7 +224,7 @@ JacD[[;;,2]]=JacD[[;;,2]]*(-1);
 CombinedList=GatherBy[{FpolyTN,FpolyTD,UpolyTN,UpolyTD,JacN,JacD}//Flatten[#,1]&,#[[1]]&];
 
 PolyList=Select[CombinedList,IntersectingQ[Variables[#[[1,1]]],Xlist]&];
-base=PolyList[[;;,1,1]];
+base=PolyList[[;;,1,1]]//Simplify;
 powers=Map[Simplify[Total[#[[;;,2]]]]&,PolyList];
 
 point=FindInstance[(Map[(#>0)&,Xlist]/.List->And)&&(InvsLim/.List->And), Join[Invs,Xlist]][[1]];
